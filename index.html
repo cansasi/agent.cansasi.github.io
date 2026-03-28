@@ -117,28 +117,78 @@
   </div>
 
   <script>
-    function isPrime(n) {
-      if (n < 2) return false;
-      if (n === 2) return true;
-      if (n % 2 === 0) return false;
-      for (let i = 3; i <= Math.sqrt(n); i += 2) {
-        if (n % i === 0) return false;
+    // --- Miller-Rabin (deterministic for n < 3.3 * 10^24) ---
+    function modpow(base, exp, mod) {
+      let result = 1n;
+      base %= mod;
+      while (exp > 0n) {
+        if (exp & 1n) result = result * base % mod;
+        exp >>= 1n;
+        base = base * base % mod;
       }
-      return true;
+      return result;
+    }
+
+    function millerRabin(n, a) {
+      if (n === a) return true;
+      let d = n - 1n, r = 0n;
+      while (!(d & 1n)) { d >>= 1n; r++; }
+      let x = modpow(a, d, n);
+      if (x === 1n || x === n - 1n) return true;
+      for (let i = 1n; i < r; i++) {
+        x = x * x % n;
+        if (x === n - 1n) return true;
+      }
+      return false;
+    }
+
+    const WITNESSES = [2n, 3n, 5n, 7n, 11n, 13n, 17n, 19n, 23n, 29n, 31n, 37n];
+
+    function isPrime(n) {
+      const bn = BigInt(n);
+      if (bn < 2n) return false;
+      for (const a of WITNESSES) {
+        if (bn === a) return true;
+        if (bn % a === 0n) return false;
+      }
+      return WITNESSES.every(a => millerRabin(bn, a));
+    }
+
+    // --- Pollard's rho factorization ---
+    function gcd(a, b) {
+      while (b) { [a, b] = [b, a % b]; }
+      return a;
+    }
+
+    function pollardRho(n) {
+      if (n % 2n === 0n) return 2n;
+      for (let c = 1n; ; c++) {
+        let x = 2n, y = 2n, d = 1n;
+        const f = v => (v * v + c) % n;
+        while (d === 1n) {
+          x = f(x); y = f(f(y));
+          d = gcd(x > y ? x - y : y - x, n);
+        }
+        if (d !== n) return d;
+      }
     }
 
     function primeFactors(n) {
+      let bn = BigInt(n);
+      if (bn < 2n) return [];
       const factors = [];
-      let d = 2;
-      while (d * d <= n) {
-        while (n % d === 0) {
-          factors.push(d);
-          n = Math.floor(n / d);
+      const stack = [bn];
+      while (stack.length) {
+        const v = stack.pop();
+        if (v === 1n) continue;
+        if (isPrime(Number(v) <= Number.MAX_SAFE_INTEGER ? Number(v) : v)) {
+          factors.push(v);
+        } else {
+          const d = pollardRho(v);
+          stack.push(d, v / d);
         }
-        d++;
       }
-      if (n > 1) factors.push(n);
-      return factors;
+      return factors.map(Number).sort((a, b) => a - b);
     }
 
     function check() {
