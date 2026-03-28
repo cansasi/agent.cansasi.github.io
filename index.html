@@ -117,10 +117,11 @@
   </div>
 
   <script>
-    // --- Miller-Rabin (deterministic for n < 3.3 * 10^24) ---
+    // --- Baillie-PSW primality test ---
+
     function modpow(base, exp, mod) {
       let result = 1n;
-      base %= mod;
+      base = ((base % mod) + mod) % mod;
       while (exp > 0n) {
         if (exp & 1n) result = result * base % mod;
         exp >>= 1n;
@@ -129,8 +130,26 @@
       return result;
     }
 
+    // Jacobi symbol (a/n)
+    function jacobi(a, n) {
+      a = ((a % n) + n) % n;
+      let j = 1;
+      while (a !== 0n) {
+        while (a % 2n === 0n) {
+          a >>= 1n;
+          const r = n & 7n;
+          if (r === 3n || r === 5n) j = -j;
+        }
+        [a, n] = [n, a];
+        if ((a & 3n) === 3n && (n & 3n) === 3n) j = -j;
+        a %= n;
+      }
+      return n === 1n ? j : 0;
+    }
+
     function millerRabin(n, a) {
       if (n === a) return true;
+      if (n % a === 0n) return false;
       let d = n - 1n, r = 0n;
       while (!(d & 1n)) { d >>= 1n; r++; }
       let x = modpow(a, d, n);
@@ -142,53 +161,112 @@
       return false;
     }
 
-    const WITNESSES = [2n, 3n, 5n, 7n, 11n, 13n, 17n, 19n, 23n, 29n, 31n, 37n];
-
-    function isPrime(n) {
-      const bn = BigInt(n);
-      if (bn < 2n) return false;
-      for (const a of WITNESSES) {
-        if (bn === a) return true;
-        if (bn % a === 0n) return false;
+    // Strong Lucas probable prime test (Selfridge parameters, P=1)
+    function strongLucas(n) {
+      let D = 5n, sign = 1n;
+      for (;;) {
+        const cand = sign * D;
+        const j = jacobi(cand, n);
+        if (j === -1) { D = cand; break; }
+        if (j === 0) return false;
+        D += 2n; sign = -sign;
       }
-      return WITNESSES.every(a => millerRabin(bn, a));
+      const Dmod = ((D % n) + n) % n;
+      const Qmod = (((1n - D) / 4n % n) + n) % n;
+      const inv2 = (n + 1n) >> 1n; // mod inverse of 2 (n is odd)
+
+      let d = n + 1n, s = 0n;
+      while (!(d & 1n)) { d >>= 1n; s++; }
+
+      let U = 1n, V = 1n, Qk = Qmod; // U_1=1, V_1=P=1
+      const bits = d.toString(2);
+      for (let i = 1; i < bits.length; i++) {
+        // Double step
+        U = U * V % n;
+        V = (V * V % n + n - 2n * Qk % n) % n;
+        Qk = Qk * Qk % n;
+        if (bits[i] === '1') {
+          // Add-1 step (P=1)
+          const U1 = (U + V) % n * inv2 % n;
+          const V1 = (Dmod * U % n + V) % n * inv2 % n;
+          Qk = Qk * Qmod % n;
+          U = U1; V = V1;
+        }
+      }
+
+      if (U === 0n || V === 0n) return true;
+      for (let r = 1n; r < s; r++) {
+        V = (V * V % n + n - 2n * Qk % n) % n;
+        Qk = Qk * Qk % n;
+        if (V === 0n) return true;
+      }
+      return false;
     }
 
-    // --- Pollard's rho factorization ---
+    // Baillie-PSW: MR(base=2) + Strong Lucas (no known pseudoprimes)
+    function isPrime(n) {
+      if (n < 2n) return false;
+      const small = [2n, 3n, 5n, 7n, 11n, 13n, 17n, 19n, 23n, 29n, 31n, 37n];
+      for (const p of small) {
+        if (n === p) return true;
+        if (n % p === 0n) return false;
+      }
+      return millerRabin(n, 2n) && strongLucas(n);
+    }
+
+    // --- Pollard's rho (Brent's improvement + batch GCD) ---
+
     function gcd(a, b) {
       while (b) { [a, b] = [b, a % b]; }
       return a;
     }
 
-    function pollardRho(n) {
+    function pollardBrent(n) {
       if (n % 2n === 0n) return 2n;
       for (let c = 1n; ; c++) {
-        let x = 2n, y = 2n, d = 1n;
-        const f = v => (v * v + c) % n;
-        while (d === 1n) {
-          x = f(x); y = f(f(y));
-          d = gcd(x > y ? x - y : y - x, n);
+        let y = 1n, r = 1n, q = 1n, g = 1n, x, ys;
+        while (g === 1n) {
+          x = y;
+          for (let i = 0n; i < r; i++) y = (y * y + c) % n;
+          let k = 0n;
+          while (k < r && g === 1n) {
+            ys = y;
+            const step = r - k < 128n ? r - k : 128n;
+            for (let i = 0n; i < step; i++) {
+              y = (y * y + c) % n;
+              q = q * (x > y ? x - y : y - x) % n;
+            }
+            g = gcd(q, n);
+            k += 128n;
+          }
+          r *= 2n;
         }
-        if (d !== n) return d;
+        if (g === n) {
+          g = 1n;
+          while (g === 1n) {
+            ys = (ys * ys + c) % n;
+            g = gcd(x > ys ? x - ys : ys - x, n);
+          }
+        }
+        if (g !== n) return g;
       }
     }
 
     function primeFactors(n) {
-      let bn = BigInt(n);
-      if (bn < 2n) return [];
-      const factors = [];
-      const stack = [bn];
+      if (n < 2n) return [];
+      const result = [];
+      const stack = [n];
       while (stack.length) {
         const v = stack.pop();
         if (v === 1n) continue;
-        if (isPrime(Number(v) <= Number.MAX_SAFE_INTEGER ? Number(v) : v)) {
-          factors.push(v);
+        if (isPrime(v)) {
+          result.push(v);
         } else {
-          const d = pollardRho(v);
+          const d = pollardBrent(v);
           stack.push(d, v / d);
         }
       }
-      return factors.map(Number).sort((a, b) => a - b);
+      return result.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
     }
 
     function check() {
@@ -198,7 +276,7 @@
       const resultDetail = document.getElementById('resultDetail');
       const factorsDiv = document.getElementById('factors');
 
-      if (input === '' || isNaN(input)) {
+      if (!/^-?\d+$/.test(input)) {
         resultText.textContent = '有効な整数を入力してください';
         result.className = 'result not-prime show';
         resultDetail.textContent = '';
@@ -206,9 +284,9 @@
         return;
       }
 
-      const n = parseInt(input, 10);
+      const n = BigInt(input);
 
-      if (n < 0) {
+      if (n < 0n) {
         resultText.textContent = `${n} は負の数です`;
         result.className = 'result not-prime show';
         resultDetail.textContent = '素数は2以上の自然数です';
@@ -224,7 +302,7 @@
       } else {
         resultText.textContent = `${n} は素数ではありません`;
         result.className = 'result not-prime show';
-        if (n < 2) {
+        if (n < 2n) {
           resultDetail.textContent = '素数は2以上の自然数です';
           factorsDiv.className = 'factors';
         } else {
