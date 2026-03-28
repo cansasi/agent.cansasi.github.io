@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>素数判定</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f4f8;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 40px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 480px;
+    }
+    h1 {
+      font-size: 1.8rem;
+      color: #1a202c;
+      margin-bottom: 8px;
+    }
+    p.subtitle {
+      color: #718096;
+      margin-bottom: 28px;
+      font-size: 0.95rem;
+    }
+    .input-row {
+      display: flex;
+      gap: 10px;
+    }
+    input[type="number"] {
+      flex: 1;
+      padding: 12px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input[type="number"]:focus {
+      border-color: #667eea;
+    }
+    button {
+      padding: 12px 20px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+    button:hover { background: #5a67d8; }
+    .result {
+      margin-top: 24px;
+      padding: 20px;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      text-align: center;
+      display: none;
+    }
+    .result.prime {
+      background: #f0fff4;
+      color: #276749;
+      border: 2px solid #9ae6b4;
+    }
+    .result.not-prime {
+      background: #fff5f5;
+      color: #9b2c2c;
+      border: 2px solid #feb2b2;
+    }
+    .result.show { display: block; }
+    .detail {
+      margin-top: 8px;
+      font-size: 0.85rem;
+      font-weight: 400;
+      color: inherit;
+      opacity: 0.8;
+    }
+    .factors {
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: #f7fafc;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      color: #4a5568;
+      font-weight: 400;
+      text-align: left;
+      display: none;
+    }
+    .factors.show { display: block; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>素数判定</h1>
+    <p class="subtitle">整数を入力して、素数かどうか判定します</p>
+    <div class="input-row">
+      <input type="number" id="numInput" placeholder="整数を入力..." min="0" />
+      <button onclick="check()">判定</button>
+    </div>
+    <div class="result" id="result">
+      <span id="resultText"></span>
+      <div class="detail" id="resultDetail"></div>
+    </div>
+    <div class="factors" id="factors"></div>
+  </div>
+
+  <script>
+    function isPrime(n) {
+      if (n < 2) return false;
+      if (n === 2) return true;
+      if (n % 2 === 0) return false;
+      for (let i = 3; i <= Math.sqrt(n); i += 2) {
+        if (n % i === 0) return false;
+      }
+      return true;
+    }
+
+    function primeFactors(n) {
+      const factors = [];
+      let d = 2;
+      while (d * d <= n) {
+        while (n % d === 0) {
+          factors.push(d);
+          n = Math.floor(n / d);
+        }
+        d++;
+      }
+      if (n > 1) factors.push(n);
+      return factors;
+    }
+
+    function check() {
+      const input = document.getElementById('numInput').value.trim();
+      const result = document.getElementById('result');
+      const resultText = document.getElementById('resultText');
+      const resultDetail = document.getElementById('resultDetail');
+      const factorsDiv = document.getElementById('factors');
+
+      if (input === '' || isNaN(input)) {
+        resultText.textContent = '有効な整数を入力してください';
+        result.className = 'result not-prime show';
+        resultDetail.textContent = '';
+        factorsDiv.className = 'factors';
+        return;
+      }
+
+      const n = parseInt(input, 10);
+
+      if (n < 0) {
+        resultText.textContent = `${n} は負の数です`;
+        result.className = 'result not-prime show';
+        resultDetail.textContent = '素数は2以上の自然数です';
+        factorsDiv.className = 'factors';
+        return;
+      }
+
+      if (isPrime(n)) {
+        resultText.textContent = `${n} は素数です！`;
+        result.className = 'result prime show';
+        resultDetail.textContent = '1とその数自身のみで割り切れます';
+        factorsDiv.className = 'factors';
+      } else {
+        resultText.textContent = `${n} は素数ではありません`;
+        result.className = 'result not-prime show';
+        if (n < 2) {
+          resultDetail.textContent = '素数は2以上の自然数です';
+          factorsDiv.className = 'factors';
+        } else {
+          const factors = primeFactors(n);
+          resultDetail.textContent = '';
+          factorsDiv.textContent = `素因数分解: ${n} = ${factors.join(' × ')}`;
+          factorsDiv.className = 'factors show';
+        }
+      }
+    }
+
+    document.getElementById('numInput').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') check();
+    });
+  </script>
+</body>
+</html>
