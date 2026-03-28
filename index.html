@@ -3,320 +3,812 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>素数判定</title>
+  <title>AI ディベートシステム</title>
   <style>
+    :root {
+      --alpha: #2563eb;
+      --alpha-light: #eff6ff;
+      --alpha-border: #bfdbfe;
+      --beta: #dc2626;
+      --beta-light: #fff1f2;
+      --beta-border: #fecaca;
+      --synth: #7c3aed;
+      --synth-light: #f5f3ff;
+      --synth-border: #ddd6fe;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --radius: 12px;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #f0f4f8;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
+      background: var(--bg);
+      color: var(--text);
       min-height: 100vh;
     }
-    .card {
-      background: white;
-      border-radius: 12px;
-      padding: 40px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+
+    /* ── Header ── */
+    header.app-header {
+      background: linear-gradient(135deg, var(--alpha) 0%, var(--synth) 100%);
+      color: white;
+      padding: 20px 24px;
+      text-align: center;
+    }
+    header.app-header h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    header.app-header p {
+      font-size: 0.9rem;
+      opacity: 0.85;
+      margin-top: 4px;
+    }
+
+    /* ── Setup Panel ── */
+    #setup-panel {
+      max-width: 720px;
+      margin: 28px auto;
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 28px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+    }
+    .setup-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .setup-grid .full-width { grid-column: 1 / -1; }
+    .field label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 6px;
+    }
+    .field input, .field select, .field textarea {
       width: 100%;
-      max-width: 480px;
-    }
-    h1 {
-      font-size: 1.8rem;
-      color: #1a202c;
-      margin-bottom: 8px;
-    }
-    p.subtitle {
-      color: #718096;
-      margin-bottom: 28px;
-      font-size: 0.95rem;
-    }
-    .input-row {
-      display: flex;
-      gap: 10px;
-    }
-    input[type="number"] {
-      flex: 1;
-      padding: 12px 16px;
-      border: 2px solid #e2e8f0;
+      padding: 10px 14px;
+      border: 2px solid var(--border);
       border-radius: 8px;
-      font-size: 1.1rem;
+      font-size: 0.95rem;
+      color: var(--text);
+      background: white;
       outline: none;
       transition: border-color 0.2s;
+      font-family: inherit;
     }
-    input[type="number"]:focus {
-      border-color: #667eea;
+    .field textarea { min-height: 64px; resize: vertical; }
+    .field input:focus, .field select:focus, .field textarea:focus {
+      border-color: var(--alpha);
     }
-    button {
-      padding: 12px 20px;
-      background: #667eea;
+    .field input[type="password"] { letter-spacing: 0.1em; }
+    .start-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-top: 20px;
+    }
+    .btn-primary {
+      flex: 1;
+      padding: 13px 24px;
+      background: linear-gradient(135deg, var(--alpha), var(--synth));
       color: white;
       border: none;
       border-radius: 8px;
       font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn-primary:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-secondary {
+      padding: 13px 20px;
+      background: white;
+      color: var(--muted);
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-secondary:hover { border-color: var(--beta); color: var(--beta); }
+    .btn-danger {
+      padding: 13px 20px;
+      background: white;
+      color: var(--beta);
+      border: 2px solid var(--beta-border);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
       cursor: pointer;
       transition: background 0.2s;
-      white-space: nowrap;
     }
-    button:hover { background: #5a67d8; }
-    .result {
-      margin-top: 24px;
-      padding: 20px;
-      border-radius: 8px;
+    .btn-danger:hover { background: var(--beta-light); }
+
+    /* ── Progress ── */
+    #progress-bar-container {
+      max-width: 720px;
+      margin: 0 auto 16px;
+      display: none;
+    }
+    .progress-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .progress-track {
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--alpha), var(--synth));
+      border-radius: 3px;
+      transition: width 0.4s ease;
+      width: 0%;
+    }
+
+    /* ── Debate Arena ── */
+    #debate-arena {
+      max-width: 1100px;
+      margin: 0 auto 24px;
+      padding: 0 16px;
+      display: none;
+    }
+    .ai-columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    .ai-column-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 18px;
+      border-radius: 10px;
+      margin-bottom: 14px;
+      font-weight: 700;
+      font-size: 1rem;
+    }
+    .ai-column-header .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-size: 1.1rem;
-      font-weight: 600;
-      text-align: center;
+      font-weight: 800;
+      color: white;
+      flex-shrink: 0;
+    }
+    #alpha-header { background: var(--alpha-light); color: var(--alpha); border: 2px solid var(--alpha-border); }
+    #alpha-header .avatar { background: var(--alpha); }
+    #beta-header { background: var(--beta-light); color: var(--beta); border: 2px solid var(--beta-border); }
+    #beta-header .avatar { background: var(--beta); }
+    .col-meta { font-size: 0.78rem; font-weight: 500; opacity: 0.75; margin-top: 1px; }
+
+    /* ── Message Bubbles ── */
+    .message-block {
+      margin-bottom: 16px;
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .round-badge {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 2px 8px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+    }
+    .alpha-badge { background: var(--alpha-light); color: var(--alpha); border: 1px solid var(--alpha-border); }
+    .beta-badge { background: var(--beta-light); color: var(--beta); border: 1px solid var(--beta-border); }
+    .bubble {
+      padding: 14px 16px;
+      border-radius: 10px;
+      font-size: 0.93rem;
+      line-height: 1.65;
+      position: relative;
+    }
+    .bubble-alpha {
+      background: var(--alpha-light);
+      border: 1px solid var(--alpha-border);
+      border-left: 4px solid var(--alpha);
+    }
+    .bubble-beta {
+      background: var(--beta-light);
+      border: 1px solid var(--beta-border);
+      border-left: 4px solid var(--beta);
+    }
+    .bubble p { margin-bottom: 0.6em; }
+    .bubble p:last-child { margin-bottom: 0; }
+    .bubble strong { font-weight: 700; }
+    .bubble em { font-style: italic; }
+
+    /* Cursor blink */
+    .cursor {
+      display: inline-block;
+      width: 2px;
+      height: 1em;
+      background: currentColor;
+      opacity: 0.7;
+      margin-left: 2px;
+      vertical-align: text-bottom;
+      animation: blink 0.8s step-end infinite;
+    }
+    @keyframes blink { 0%,100% { opacity: 0.7; } 50% { opacity: 0; } }
+
+    /* ── Synthesis Panel ── */
+    #synthesis-panel {
+      max-width: 1100px;
+      margin: 0 auto 32px;
+      padding: 0 16px;
       display: none;
     }
-    .result.prime {
-      background: #f0fff4;
-      color: #276749;
-      border: 2px solid #9ae6b4;
+    .synthesis-card {
+      background: var(--synth-light);
+      border: 2px solid var(--synth-border);
+      border-radius: var(--radius);
+      padding: 28px;
     }
-    .result.not-prime {
-      background: #fff5f5;
-      color: #9b2c2c;
-      border: 2px solid #feb2b2;
+    .synthesis-card h2 {
+      color: var(--synth);
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
-    .result.show { display: block; }
-    .detail {
-      margin-top: 8px;
-      font-size: 0.85rem;
-      font-weight: 400;
-      color: inherit;
-      opacity: 0.8;
+    #synthesis-content {
+      font-size: 0.95rem;
+      line-height: 1.7;
+      color: var(--text);
     }
-    .factors {
-      margin-top: 16px;
+    #synthesis-content p { margin-bottom: 0.7em; }
+    #synthesis-content p:last-child { margin-bottom: 0; }
+
+    /* ── Error Banner ── */
+    .error-banner {
+      background: #fff1f2;
+      border: 1px solid #fecaca;
+      border-left: 4px solid var(--beta);
+      border-radius: 8px;
       padding: 12px 16px;
-      background: #f7fafc;
-      border-radius: 6px;
-      font-size: 0.9rem;
-      color: #4a5568;
-      font-weight: 400;
-      text-align: left;
-      display: none;
+      font-size: 0.88rem;
+      color: var(--beta);
+      margin: 12px 0;
     }
-    .factors.show { display: block; }
+
+    /* ── Control Row ── */
+    #control-row {
+      max-width: 1100px;
+      margin: 0 auto 32px;
+      padding: 0 16px;
+      display: none;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    /* ── Mobile ── */
+    @media (max-width: 700px) {
+      .setup-grid { grid-template-columns: 1fr; }
+      .ai-columns { grid-template-columns: 1fr; }
+      header.app-header h1 { font-size: 1.3rem; }
+      #setup-panel { margin: 16px; padding: 20px; }
+    }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>素数判定</h1>
-    <p class="subtitle">整数を入力して、素数かどうか判定します</p>
-    <div class="input-row">
-      <input type="number" id="numInput" placeholder="整数を入力..." min="0" />
-      <button onclick="check()">判定</button>
+
+<header class="app-header">
+  <h1>AI ディベートシステム</h1>
+  <p>2つのAIが同じゴールに向かって対話・討論し、答えを導き出します</p>
+</header>
+
+<!-- Setup Panel -->
+<div id="setup-panel">
+  <div class="setup-grid">
+    <div class="field full-width">
+      <label>ディベートのトピック / 問い</label>
+      <textarea id="topic" placeholder="例: 人工知能は人間の創造性を超えることができるか？"></textarea>
     </div>
-    <div class="result" id="result">
-      <span id="resultText"></span>
-      <div class="detail" id="resultDetail"></div>
+    <div class="field full-width">
+      <label>共通ゴール（両AIが目指すもの）</label>
+      <input id="goal" type="text" placeholder="例: この問いに対する最も説得力のある結論を導き出す" />
     </div>
-    <div class="factors" id="factors"></div>
+    <div class="field">
+      <label>ディベートのラウンド数</label>
+      <select id="rounds">
+        <option value="2">2ラウンド</option>
+        <option value="3" selected>3ラウンド</option>
+        <option value="4">4ラウンド</option>
+        <option value="5">5ラウンド</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Anthropic APIキー</label>
+      <input id="api-key" type="password" placeholder="sk-ant-..." autocomplete="off" />
+    </div>
   </div>
+  <div class="start-row">
+    <button class="btn-primary" id="start-btn" onclick="startDebate()">ディベートを開始する</button>
+  </div>
+  <div id="setup-error"></div>
+</div>
 
-  <script>
-    // --- Baillie-PSW primality test ---
+<!-- Progress -->
+<div id="progress-bar-container">
+  <div class="progress-info">
+    <span id="progress-label">準備中...</span>
+    <span id="progress-pct">0%</span>
+  </div>
+  <div class="progress-track">
+    <div class="progress-fill" id="progress-fill"></div>
+  </div>
+</div>
 
-    function modpow(base, exp, mod) {
-      let result = 1n;
-      base = ((base % mod) + mod) % mod;
-      while (exp > 0n) {
-        if (exp & 1n) result = result * base % mod;
-        exp >>= 1n;
-        base = base * base % mod;
-      }
-      return result;
-    }
+<!-- Debate Arena -->
+<div id="debate-arena">
+  <div class="ai-columns">
+    <div id="alpha-col">
+      <div class="ai-column-header" id="alpha-header">
+        <div class="avatar">A</div>
+        <div>
+          <div>AI-Alpha</div>
+          <div class="col-meta">提案者・擁護者</div>
+        </div>
+      </div>
+      <div id="alpha-messages"></div>
+    </div>
+    <div id="beta-col">
+      <div class="ai-column-header" id="beta-header">
+        <div class="avatar">B</div>
+        <div>
+          <div>AI-Beta</div>
+          <div class="col-meta">批評者・挑戦者</div>
+        </div>
+      </div>
+      <div id="beta-messages"></div>
+    </div>
+  </div>
+</div>
 
-    // Jacobi symbol (a/n)
-    function jacobi(a, n) {
-      a = ((a % n) + n) % n;
-      let j = 1;
-      while (a !== 0n) {
-        while (a % 2n === 0n) {
-          a >>= 1n;
-          const r = n & 7n;
-          if (r === 3n || r === 5n) j = -j;
+<!-- Synthesis Panel -->
+<div id="synthesis-panel">
+  <div class="synthesis-card">
+    <h2>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
+      総合的な結論・合意点
+    </h2>
+    <div id="synthesis-content"></div>
+  </div>
+</div>
+
+<!-- Control Row -->
+<div id="control-row">
+  <button class="btn-danger" id="stop-btn" onclick="stopDebate()" style="display:none">討論を停止する</button>
+  <button class="btn-secondary" id="reset-btn" onclick="resetDebate()" style="display:none">リセット</button>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+//  State
+// ─────────────────────────────────────────────
+const state = {
+  phase: 'IDLE',
+  round: 1,
+  maxRounds: 3,
+  alphaMessages: [],
+  betaMessages: [],
+  transcript: [],
+  abortController: null,
+  stopped: false,
+};
+
+// ─────────────────────────────────────────────
+//  Minimal markdown renderer
+// ─────────────────────────────────────────────
+function renderMarkdown(text) {
+  // Bold
+  text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Italic
+  text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  // Paragraphs
+  const paragraphs = text.trim().split(/\n\n+/);
+  return paragraphs.map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
+}
+
+// ─────────────────────────────────────────────
+//  API streaming call
+// ─────────────────────────────────────────────
+async function streamMessage({ systemPrompt, messages, onDelta, signal }) {
+  const apiKey = document.getElementById('api-key').value.trim();
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-allow-browser': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-opus-4-6',
+      max_tokens: 1500,
+      stream: true,
+      system: systemPrompt,
+      messages: messages,
+    }),
+    signal,
+  });
+
+  if (!response.ok) {
+    let errorMsg = `APIエラー (HTTP ${response.status})`;
+    try {
+      const err = await response.json();
+      errorMsg = err.error?.message || errorMsg;
+    } catch (_) {}
+    throw new Error(errorMsg);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let fullText = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const data = line.slice(6).trim();
+      if (!data || data === '[DONE]') continue;
+      try {
+        const evt = JSON.parse(data);
+        if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta') {
+          const chunk = evt.delta.text;
+          fullText += chunk;
+          onDelta(chunk);
         }
-        [a, n] = [n, a];
-        if ((a & 3n) === 3n && (n & 3n) === 3n) j = -j;
-        a %= n;
-      }
-      return n === 1n ? j : 0;
+      } catch (_) {}
+    }
+  }
+  return fullText;
+}
+
+// ─────────────────────────────────────────────
+//  DOM helpers
+// ─────────────────────────────────────────────
+function createMessageBlock(containerId, round, isAlpha) {
+  const container = document.getElementById(containerId);
+  const block = document.createElement('div');
+  block.className = 'message-block';
+
+  const badge = document.createElement('div');
+  badge.className = `round-badge ${isAlpha ? 'alpha-badge' : 'beta-badge'}`;
+  badge.textContent = `ラウンド ${round}`;
+  block.appendChild(badge);
+
+  const bubble = document.createElement('div');
+  bubble.className = `bubble ${isAlpha ? 'bubble-alpha' : 'bubble-beta'}`;
+  block.appendChild(bubble);
+
+  container.appendChild(block);
+  block.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  return bubble;
+}
+
+function setProgress(label, pct) {
+  document.getElementById('progress-label').textContent = label;
+  document.getElementById('progress-pct').textContent = `${pct}%`;
+  document.getElementById('progress-fill').style.width = `${pct}%`;
+}
+
+function showError(msg, containerId) {
+  const div = document.createElement('div');
+  div.className = 'error-banner';
+  div.textContent = `エラー: ${msg}`;
+  if (containerId) {
+    document.getElementById(containerId).appendChild(div);
+  } else {
+    document.getElementById('setup-error').appendChild(div);
+  }
+}
+
+// ─────────────────────────────────────────────
+//  System Prompts
+// ─────────────────────────────────────────────
+function buildAlphaSystem(topic, goal) {
+  return `あなたはAI-Alphaです。構造化されたディベートにおける「提案者・擁護者」の役割を担います。
+
+【ディベートのトピック】
+${topic}
+
+【共通ゴール（あなたとAI-Betaが共有する目標）】
+${goal}
+
+【あなたの役割】
+- 明確な立場と主張を提示する
+- 論理的な根拠と証拠で主張を支える
+- AI-Betaの反論に対して誠実に応答する
+- 有効な批判は認めつつ、より洗練された議論に発展させる
+- 共通ゴールの達成に向けて建設的に貢献する
+
+【応答のルール】
+- 1回の発言は3〜5段落を目安に、簡潔かつ実質的にまとめる
+- 感情的にならず、論理と根拠を重視する
+- トピックと同じ言語で応答する（日本語のトピックなら日本語で）`;
+}
+
+function buildBetaSystem(topic, goal) {
+  return `あなたはAI-Betaです。構造化されたディベートにおける「批評者・挑戦者」の役割を担います。
+
+【ディベートのトピック】
+${topic}
+
+【共通ゴール（あなたとAI-Alphaが共有する目標）】
+${goal}
+
+【あなたの役割】
+- AI-Alphaの主張の弱点・論理的欠陥・見落としを指摘する
+- 反例・代替解釈・異なる視点を提示する
+- ソクラテス式の問いかけで議論を深める
+- 単に否定するのではなく、より良い答えに向けた建設的な批判をする
+- 共通ゴールの達成に向けて、より鋭い洞察を加える
+
+【応答のルール】
+- 1回の発言は3〜5段落を目安に、簡潔かつ実質的にまとめる
+- 批判的だが公正に、感情ではなく論理で応答する
+- トピックと同じ言語で応答する（日本語のトピックなら日本語で）`;
+}
+
+// ─────────────────────────────────────────────
+//  Debate logic
+// ─────────────────────────────────────────────
+async function runAlphaTurn(round) {
+  if (state.stopped) return;
+  const topic = document.getElementById('topic').value.trim();
+  const goal = document.getElementById('goal').value.trim();
+  const totalSteps = state.maxRounds * 2 + 1;
+  const currentStep = (round - 1) * 2 + 1;
+  setProgress(`AI-Alpha が発言中... (ラウンド ${round}/${state.maxRounds})`, Math.round(currentStep / totalSteps * 90));
+
+  const bubble = createMessageBlock('alpha-messages', round, true);
+  const cursor = document.createElement('span');
+  cursor.className = 'cursor';
+  bubble.appendChild(cursor);
+
+  let accum = '';
+  let raw = '';
+
+  try {
+    // First turn: prompt the initial argument
+    if (round === 1) {
+      state.alphaMessages.push({
+        role: 'user',
+        content: `ディベートを始めましょう。\n\nトピック: ${topic}\n共通ゴール: ${goal}\n\nまずあなたの立場と最初の主張を述べてください。`,
+      });
     }
 
-    function millerRabin(n, a) {
-      if (n === a) return true;
-      if (n % a === 0n) return false;
-      let d = n - 1n, r = 0n;
-      while (!(d & 1n)) { d >>= 1n; r++; }
-      let x = modpow(a, d, n);
-      if (x === 1n || x === n - 1n) return true;
-      for (let i = 1n; i < r; i++) {
-        x = x * x % n;
-        if (x === n - 1n) return true;
-      }
-      return false;
-    }
-
-    // Strong Lucas probable prime test (Selfridge parameters, P=1)
-    function strongLucas(n) {
-      let D = 5n, sign = 1n;
-      for (;;) {
-        const cand = sign * D;
-        const j = jacobi(cand, n);
-        if (j === -1) { D = cand; break; }
-        if (j === 0) return false;
-        D += 2n; sign = -sign;
-      }
-      const Dmod = ((D % n) + n) % n;
-      const Qmod = (((1n - D) / 4n % n) + n) % n;
-      const inv2 = (n + 1n) >> 1n; // mod inverse of 2 (n is odd)
-
-      let d = n + 1n, s = 0n;
-      while (!(d & 1n)) { d >>= 1n; s++; }
-
-      let U = 1n, V = 1n, Qk = Qmod; // U_1=1, V_1=P=1
-      const bits = d.toString(2);
-      for (let i = 1; i < bits.length; i++) {
-        // Double step
-        U = U * V % n;
-        V = (V * V % n + n - 2n * Qk % n) % n;
-        Qk = Qk * Qk % n;
-        if (bits[i] === '1') {
-          // Add-1 step (P=1)
-          const U1 = (U + V) % n * inv2 % n;
-          const V1 = (Dmod * U % n + V) % n * inv2 % n;
-          Qk = Qk * Qmod % n;
-          U = U1; V = V1;
-        }
-      }
-
-      if (U === 0n || V === 0n) return true;
-      for (let r = 1n; r < s; r++) {
-        V = (V * V % n + n - 2n * Qk % n) % n;
-        Qk = Qk * Qk % n;
-        if (V === 0n) return true;
-      }
-      return false;
-    }
-
-    // Baillie-PSW: MR(base=2) + Strong Lucas (no known pseudoprimes)
-    function isPrime(n) {
-      if (n < 2n) return false;
-      const small = [2n, 3n, 5n, 7n, 11n, 13n, 17n, 19n, 23n, 29n, 31n, 37n];
-      for (const p of small) {
-        if (n === p) return true;
-        if (n % p === 0n) return false;
-      }
-      return millerRabin(n, 2n) && strongLucas(n);
-    }
-
-    // --- Pollard's rho (Brent's improvement + batch GCD) ---
-
-    function gcd(a, b) {
-      while (b) { [a, b] = [b, a % b]; }
-      return a;
-    }
-
-    function pollardBrent(n) {
-      if (n % 2n === 0n) return 2n;
-      for (let c = 1n; ; c++) {
-        let y = 1n, r = 1n, q = 1n, g = 1n, x, ys;
-        while (g === 1n) {
-          x = y;
-          for (let i = 0n; i < r; i++) y = (y * y + c) % n;
-          let k = 0n;
-          while (k < r && g === 1n) {
-            ys = y;
-            const step = r - k < 128n ? r - k : 128n;
-            for (let i = 0n; i < step; i++) {
-              y = (y * y + c) % n;
-              q = q * (x > y ? x - y : y - x) % n;
-            }
-            g = gcd(q, n);
-            k += 128n;
-          }
-          r *= 2n;
-        }
-        if (g === n) {
-          g = 1n;
-          while (g === 1n) {
-            ys = (ys * ys + c) % n;
-            g = gcd(x > ys ? x - ys : ys - x, n);
-          }
-        }
-        if (g !== n) return g;
-      }
-    }
-
-    function primeFactors(n) {
-      if (n < 2n) return [];
-      const result = [];
-      const stack = [n];
-      while (stack.length) {
-        const v = stack.pop();
-        if (v === 1n) continue;
-        if (isPrime(v)) {
-          result.push(v);
-        } else {
-          const d = pollardBrent(v);
-          stack.push(d, v / d);
-        }
-      }
-      return result.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
-    }
-
-    function check() {
-      const input = document.getElementById('numInput').value.trim();
-      const result = document.getElementById('result');
-      const resultText = document.getElementById('resultText');
-      const resultDetail = document.getElementById('resultDetail');
-      const factorsDiv = document.getElementById('factors');
-
-      if (!/^-?\d+$/.test(input)) {
-        resultText.textContent = '有効な整数を入力してください';
-        result.className = 'result not-prime show';
-        resultDetail.textContent = '';
-        factorsDiv.className = 'factors';
-        return;
-      }
-
-      const n = BigInt(input);
-
-      if (n < 0n) {
-        resultText.textContent = `${n} は負の数です`;
-        result.className = 'result not-prime show';
-        resultDetail.textContent = '素数は2以上の自然数です';
-        factorsDiv.className = 'factors';
-        return;
-      }
-
-      if (isPrime(n)) {
-        resultText.textContent = `${n} は素数です！`;
-        result.className = 'result prime show';
-        resultDetail.textContent = '1とその数自身のみで割り切れます';
-        factorsDiv.className = 'factors';
-      } else {
-        resultText.textContent = `${n} は素数ではありません`;
-        result.className = 'result not-prime show';
-        if (n < 2n) {
-          resultDetail.textContent = '素数は2以上の自然数です';
-          factorsDiv.className = 'factors';
-        } else {
-          const factors = primeFactors(n);
-          resultDetail.textContent = '';
-          factorsDiv.textContent = `素因数分解: ${n} = ${factors.join(' × ')}`;
-          factorsDiv.className = 'factors show';
-        }
-      }
-    }
-
-    document.getElementById('numInput').addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') check();
+    raw = await streamMessage({
+      systemPrompt: buildAlphaSystem(topic, goal),
+      messages: state.alphaMessages,
+      signal: state.abortController.signal,
+      onDelta: (chunk) => {
+        accum += chunk;
+        cursor.remove();
+        bubble.innerHTML = renderMarkdown(accum);
+        bubble.appendChild(cursor);
+        bubble.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      },
     });
-  </script>
+
+    cursor.remove();
+    bubble.innerHTML = renderMarkdown(raw);
+
+    state.alphaMessages.push({ role: 'assistant', content: raw });
+    state.betaMessages.push({ role: 'user', content: raw });
+    state.transcript.push({ speaker: 'AI-Alpha', round, text: raw });
+
+    await runBetaTurn(round);
+  } catch (err) {
+    cursor.remove();
+    if (err.name === 'AbortError') return;
+    bubble.innerHTML = renderMarkdown(accum || '（エラーが発生しました）');
+    showError(err.message, 'alpha-messages');
+    finishDebate(true);
+  }
+}
+
+async function runBetaTurn(round) {
+  if (state.stopped) return;
+  const topic = document.getElementById('topic').value.trim();
+  const goal = document.getElementById('goal').value.trim();
+  const totalSteps = state.maxRounds * 2 + 1;
+  const currentStep = (round - 1) * 2 + 2;
+  setProgress(`AI-Beta が反論中... (ラウンド ${round}/${state.maxRounds})`, Math.round(currentStep / totalSteps * 90));
+
+  const bubble = createMessageBlock('beta-messages', round, false);
+  const cursor = document.createElement('span');
+  cursor.className = 'cursor';
+  bubble.appendChild(cursor);
+
+  let accum = '';
+  let raw = '';
+
+  try {
+    // betaMessages already has Alpha's latest turn as the last user message
+    raw = await streamMessage({
+      systemPrompt: buildBetaSystem(topic, goal),
+      messages: state.betaMessages,
+      signal: state.abortController.signal,
+      onDelta: (chunk) => {
+        accum += chunk;
+        cursor.remove();
+        bubble.innerHTML = renderMarkdown(accum);
+        bubble.appendChild(cursor);
+        bubble.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      },
+    });
+
+    cursor.remove();
+    bubble.innerHTML = renderMarkdown(raw);
+
+    state.betaMessages.push({ role: 'assistant', content: raw });
+    state.alphaMessages.push({ role: 'user', content: raw });
+    state.transcript.push({ speaker: 'AI-Beta', round, text: raw });
+
+    if (round < state.maxRounds) {
+      state.round = round + 1;
+      await runAlphaTurn(state.round);
+    } else {
+      await runSynthesis();
+    }
+  } catch (err) {
+    cursor.remove();
+    if (err.name === 'AbortError') return;
+    bubble.innerHTML = renderMarkdown(accum || '（エラーが発生しました）');
+    showError(err.message, 'beta-messages');
+    finishDebate(true);
+  }
+}
+
+async function runSynthesis() {
+  if (state.stopped) return;
+  setProgress('総合的な結論を生成中...', 92);
+
+  const synthPanel = document.getElementById('synthesis-panel');
+  synthPanel.style.display = 'block';
+  synthPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  const goal = document.getElementById('goal').value.trim();
+  const transcriptText = state.transcript
+    .map(e => `【${e.speaker} - ラウンド${e.round}】\n${e.text}`)
+    .join('\n\n---\n\n');
+
+  const synthContent = document.getElementById('synthesis-content');
+  const cursor = document.createElement('span');
+  cursor.className = 'cursor';
+  synthContent.appendChild(cursor);
+
+  let accum = '';
+
+  try {
+    const raw = await streamMessage({
+      systemPrompt: `あなたは公正な審判・分析者です。2つのAIのディベートを分析し、客観的な総括を行います。
+共通ゴールに対する結論を、両者の主張の良い点を統合して導き出してください。`,
+      messages: [{
+        role: 'user',
+        content: `以下はAI-AlphaとAI-Betaのディベート全記録です。\n\n${transcriptText}\n\n共通ゴール: ${goal}\n\n以下の構成で総括してください：\n1. 両者の主な主張の要点\n2. 主要な合意点と対立点\n3. 共通ゴールに基づく最終的な結論\n\n日本語で回答してください。`,
+      }],
+      signal: state.abortController.signal,
+      onDelta: (chunk) => {
+        accum += chunk;
+        cursor.remove();
+        synthContent.innerHTML = renderMarkdown(accum);
+        synthContent.appendChild(cursor);
+      },
+    });
+
+    cursor.remove();
+    synthContent.innerHTML = renderMarkdown(raw);
+    finishDebate(false);
+  } catch (err) {
+    cursor.remove();
+    if (err.name === 'AbortError') return;
+    synthContent.innerHTML = renderMarkdown(accum || '（エラーが発生しました）');
+    showError(err.message, 'synthesis-content');
+    finishDebate(true);
+  }
+}
+
+function finishDebate(hadError) {
+  state.phase = 'COMPLETE';
+  setProgress(hadError ? 'エラーが発生しました' : 'ディベート完了！', 100);
+  document.getElementById('stop-btn').style.display = 'none';
+  document.getElementById('reset-btn').style.display = 'inline-block';
+}
+
+// ─────────────────────────────────────────────
+//  Public controls
+// ─────────────────────────────────────────────
+async function startDebate() {
+  document.getElementById('setup-error').innerHTML = '';
+
+  const topic = document.getElementById('topic').value.trim();
+  const goal = document.getElementById('goal').value.trim();
+  const rounds = parseInt(document.getElementById('rounds').value, 10);
+  const apiKey = document.getElementById('api-key').value.trim();
+
+  if (!topic) { showError('トピックを入力してください'); return; }
+  if (!goal) { showError('共通ゴールを入力してください'); return; }
+  if (!apiKey || !apiKey.startsWith('sk-')) { showError('有効なAnthropicのAPIキーを入力してください'); return; }
+
+  // Setup state
+  state.phase = 'RUNNING';
+  state.round = 1;
+  state.maxRounds = rounds;
+  state.alphaMessages = [];
+  state.betaMessages = [];
+  state.transcript = [];
+  state.stopped = false;
+  state.abortController = new AbortController();
+
+  // Show UI
+  document.getElementById('setup-panel').style.display = 'none';
+  document.getElementById('progress-bar-container').style.display = 'block';
+  document.getElementById('debate-arena').style.display = 'block';
+  document.getElementById('control-row').style.display = 'flex';
+  document.getElementById('stop-btn').style.display = 'inline-block';
+  document.getElementById('reset-btn').style.display = 'none';
+  document.getElementById('alpha-messages').innerHTML = '';
+  document.getElementById('beta-messages').innerHTML = '';
+  document.getElementById('synthesis-content').innerHTML = '';
+  document.getElementById('synthesis-panel').style.display = 'none';
+
+  setProgress('ディベートを開始します...', 2);
+
+  await runAlphaTurn(1);
+}
+
+function stopDebate() {
+  state.stopped = true;
+  if (state.abortController) state.abortController.abort();
+  setProgress('停止しました', document.getElementById('progress-fill').style.width);
+  document.getElementById('stop-btn').style.display = 'none';
+  document.getElementById('reset-btn').style.display = 'inline-block';
+}
+
+function resetDebate() {
+  state.phase = 'IDLE';
+  state.stopped = false;
+  document.getElementById('setup-panel').style.display = 'block';
+  document.getElementById('progress-bar-container').style.display = 'none';
+  document.getElementById('debate-arena').style.display = 'none';
+  document.getElementById('synthesis-panel').style.display = 'none';
+  document.getElementById('control-row').style.display = 'none';
+  document.getElementById('start-btn').disabled = false;
+}
+</script>
 </body>
 </html>
